@@ -9,6 +9,7 @@
     "parserOptions": {
         "ecmaVersion": "latest"
     },
-    "rules": {
+    "rules": { 
+        "semi": 1
     }
 }
