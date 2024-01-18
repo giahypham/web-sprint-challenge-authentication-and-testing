@@ -5,7 +5,7 @@ const User = require('../users/users-model');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../secrets');
 
-router.post('/register', restricted, (req, res, next) => {
+router.post('/register', (req, res, next) => {
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -36,10 +36,8 @@ router.post('/register', restricted, (req, res, next) => {
 
   User.add({ username, password: hash })
     .then(newUser => {
-      res.status(201).json({
-        username: newUser.username,
-        password: newUser.password,
-      });
+      console.log(newUser)
+      res.status(201).json(newUser);
     })
     .catch(next);
 });
