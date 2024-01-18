@@ -2,6 +2,9 @@ const User = require('../users/users-model');
 
 async function checkUsernameExists(req, res, next) {
     try {
+        if (!req.body.username && !req.body.password) {
+            return next({ status: 400, message: "username and password required"});
+        }
         if (!req.body.username || !req.body.password) {
             return next({ status: 400, message: "username and password required"});
         }
