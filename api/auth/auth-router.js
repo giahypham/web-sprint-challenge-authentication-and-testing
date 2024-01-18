@@ -35,6 +35,9 @@ router.post('/register', async (req, res, next) => {
   try {
     const { username, password } = req.body;
 
+    if (!req.body.username || !req.body.password) {
+      return next({ status: 400, message: "username and password required"});
+    }
     // Check if the username already exists
     const existingUser = await User.findBy({ username });
 
