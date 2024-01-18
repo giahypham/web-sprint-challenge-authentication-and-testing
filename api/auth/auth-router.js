@@ -4,8 +4,9 @@ const bcrypt = require('bcryptjs');
 const User = require('../users/users-model');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../secrets');
+const { checkUsernameExists } = require('../middleware/auth-middlewares');
 
-router.post('/register', (req, res, next) => {
+router.post('/register', async (req, res, next) => {
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -31,18 +32,35 @@ router.post('/register', (req, res, next) => {
     4- On FAILED registration due to the `username` being taken,
       the response body should include a string exactly as follows: "username taken".
   */
-  const { username, password } = req.body;
-  const hash = bcrypt.hashSync(password, 8);
+  try {
+    const { username, password } = req.body;
 
-  User.add({ username, password: hash })
-    .then(newUser => {
-      console.log(newUser)
-      res.status(201).json(newUser);
-    })
-    .catch(next);
+    // Check if the username already exists
+    const existingUser = await User.findBy({ username });
+
+    // An empty array can also be truth, so we have to check the length > 0
+    if (existingUser.length > 0 && existingUser) {
+      // Username is taken
+      return res.status(400).json({ message: "username taken" });
+    }
+
+    // If username is not taken, proceed with registration
+    const hash = bcrypt.hashSync(password, 8);
+
+    const newUser = await User.add({ username, password: hash });
+
+    res.status(201).json({
+      id: newUser.id,
+      username: newUser.username,
+      password: newUser.password,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.post('/login', (req, res, next) => {
+
+router.post('/login', checkUsernameExists, (req, res, next) => {
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -66,33 +84,22 @@ router.post('/login', (req, res, next) => {
     4- On FAILED login due to `username` not existing in the db, or `password` being incorrect,
       the response body should include a string exactly as follows: "invalid credentials".
   */
-
-  if (!req.body.username || !req.body.password) {
-    return next({ status: 400, message: "username and password required"});
+  if (bcrypt.compareSync(req.body.password, req.user.password)) {
+    const token = buildToken(req.user);
+    res.json({
+      status: 200,
+      message: `welcome, ${req.user.username}`,
+      token,
+    });
+  } else {
+    next({ status: 401, message: "invalid credentials"});
   }
 
-  User.findBy({ username: req.body.username })
-    .then(user => {
-      if (!user) {
-        return next({ status: 401, message: "invalid credentials"});
-      }
-      if (bcrypt.compareSync(req.body.password, req.user.password)) {
-        const token = buildToken(req.user);
-        res.json({
-          status: 200,
-          message: `welcome, ${req.user.username}`,
-          token,
-        });
-      } else {
-        next({ status: 401, message: "invalid credentials"});
-      }
-    })
-    .catch(next);
 });
 
 function buildToken(user) {
   const payload = {
-    subject: user.user_id,
+    subject: user.id,
     username: user.username,
   };
   const options = {
